@@ -1,6 +1,6 @@
 # Watermark delivery evidence before publishing
 
-The decision is small and observable: a proof-of-delivery image is publishable only after its shipment emits a `delivered` event. The example puts that rule in Python, then sends the image and a readable shipment label to Infrai through one key and one HTTP interface. The code is deliberately copyable: the runnable path is `src/watermark_logistics.py`, while the test keeps the business decision deterministic.
+The decision here is intentionally narrow and easy to observe: a proof-of-delivery image becomes publishable only after its shipment emits a `delivered` event. This example encodes that rule in Python, then sends the image and a human-readable shipment label to Infrai using one key and one HTTP interface. The point is to keep the path boring and inspectable: the runnable path is `src/watermark_logistics.py`, and the test keeps the business rule deterministic instead of hiding it behind mocks and assumptions.
 
 ## The runnable path
 
@@ -10,9 +10,9 @@ Set `INFRAI_API_KEY`, then run:
 python3 -m src.watermark_logistics
 ```
 
-The sample creates a delivered event and a proof file, calls `POST /v1/image/process`, and prints a `ready_to_publish` result containing the processed image data. The client decodes Infrai's `{ok, data, error, metadata}` envelope before interpreting the HTTP status, surfaces rejected requests as `InfraiError`, and backs off on HTTP 429 while honoring `Retry-After`.
+The sample creates a delivered event and a proof file, calls `POST /v1/image/process`, and prints a `ready_to_publish` result containing the processed image data. The client unwraps Infrai's `{ok, data, error, metadata}` envelope before it interprets the HTTP status, raises rejected requests as `InfraiError`, and backs off on HTTP 429 while honoring `Retry-After`.
 
-The request body sends `image` and an `ops` list containing the watermark settings; the optional image watermark is left out in the basic path. A real service can persist the returned image reference alongside the shipment record and use the same `publish_proof` decision for exception events.
+The request body sends `image` and an `ops` list containing the watermark settings; the optional image watermark is omitted in the basic path. In a real service, you would usually persist the returned image reference next to the shipment record and apply the same `publish_proof` decision to exception events, retries, and whatever reconciliation job you end up needing.
 
 ## Verify the decision locally
 
@@ -23,11 +23,11 @@ python3 -m pip install requests pytest
 pytest -q
 ```
 
-The first test proves that an `address_exception` is held without an API call. The second captures the exact POST boundary and checks the authorization header, watermark label, and successful publish state.
+The first test proves that an `address_exception` is blocked before any API call happens. The second captures the exact POST boundary and verifies the authorization header, watermark label, and successful publish state.
 
 ## Why this shape
 
-Shipment events and proof files are separate concepts, so the repository keeps two typed records and one reusable client. That makes the state transition visible to an LLM agent orchestrating tools: inspect the event, decide whether publication is allowed, then call the image capability. There is no SDK-specific layer to learn; the request is a plain REST call with the API key supplied by the process environment.
+Shipment events and proof files are different records with different failure modes, so the repository keeps two typed records and one reusable client. That keeps the state transition explicit for an LLM agent orchestrating tools: inspect the event, decide if publication is allowed, then call the image capability. There is no SDK layer in the middle to learn or debug; it is a plain REST call from any language, with the API key provided by the process environment.
 
 ## License
 
@@ -35,7 +35,7 @@ MIT
 
 ## Before you deploy: Watermark Delivery Evidence
 
-Above is the happy path. The production checklist: The details below apply to Watermark Delivery Evidence.
+The section above shows the happy path. Production is where consistency questions show up, so use this as a checklist. The details below apply to Watermark Delivery Evidence.
 
 **Account & key**
 
